@@ -3,9 +3,9 @@
 	"displayName": "WML",
 	"description": "Wesnoth Markup Language Syntax Highlighting",
 	"publisher": "Bitron",
-	"version": "1.0.7",
+	"version": "2.0.0",
 	"bugs": {
-		"url": "https://github.com/Byteron/wml/issues"
+		"url": "https://github.com/babaissarkar/wml-extension/issues"
 	},
 	"engines": {
 		"vscode": "^1.17.0"
@@ -13,6 +13,7 @@
 	"categories": [
 		"Programming Languages"
 	],
+	"main": "./out/extension.js",
 	"contributes": {
 		"languages": [
 			{
@@ -36,8 +37,20 @@
 			}
 		]
 	},
+	"dependencies": {
+		"vscode-languageclient": "^9.0.1"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.104.0",
+		"ts-loader": "^9.5.1",
+		"typescript": "^5.9.2",
+		"vscode-languageclient": "^9.0.1"
+	},
 	"repository": {
-		"url": "https://github.com/Byteron/wml.git"
+		"url": "https://github.com/babaissarkar/wml-extension.git"
+	},
+	"scripts": {
+		"compile": "tsc -p ./"
 	},
 	"__metadata": {
 		"id": "f8439943-aded-4410-8396-4cfad3df4991",
