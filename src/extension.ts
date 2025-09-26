@@ -7,11 +7,11 @@ export function activate(context: vscode.ExtensionContext) {
     // Start LSP client
     const serverJar = context.asAbsolutePath('server/wml.jar');
     const serverOptions: ServerOptions = {
-        run: { command: 'java', args: ['-jar', serverJar] },
-        debug: { command: 'java', args: ['-jar', serverJar] }
+        run: { command: 'java', args: ['-jar', serverJar, '-s'] },
+        debug: { command: 'java', args: ['-jar', serverJar, '-s'] }
     };
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: 'file', language: 'plaintext' }]
+        documentSelector: [{ scheme: 'file', language: 'wml' }]
     };
 
     const client = new LanguageClient(
@@ -22,6 +22,4 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     client.start();
-    console.log("Client started!");
-    vscode.window.setStatusBarMessage("WML LSP Ready", 5000);
 }

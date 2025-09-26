@@ -35,7 +35,22 @@
 				"scopeName": "source.wml",
 				"path": "./syntaxes/wml.tmLanguage.json"
 			}
-		]
+		],
+		"configuration": {
+			"title": "WML Extension Settings",
+			"properties": {
+				"wml.dataPath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to Wesnoth gamedata directory"
+				},
+				"wml.userDataPath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to Wesnoth userdata directory"
+				}
+			}
+		}
 	},
 	"dependencies": {
 		"vscode-languageclient": "^9.0.1"
