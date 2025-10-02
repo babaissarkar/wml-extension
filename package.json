@@ -39,12 +39,12 @@
 		"configuration": {
 			"title": "WML Extension Settings",
 			"properties": {
-				"wml.dataPath": {
+				"wml.dataDir": {
 					"type": "string",
 					"default": "",
 					"description": "Path to Wesnoth gamedata directory"
 				},
-				"wml.userDataPath": {
+				"wml.userDataDir": {
 					"type": "string",
 					"default": "",
 					"description": "Path to Wesnoth userdata directory"
