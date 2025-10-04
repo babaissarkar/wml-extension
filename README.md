@@ -17,6 +17,12 @@ is an [open source](https://opensource.org/faq#osd), turn-based strategy game wi
 
 <img width="588" height="173" alt="Screenshot from 2025-10-04 16-28-22" src="https://github.com/user-attachments/assets/7a10375b-0471-46e2-bab5-3810327d75ef" />
 
+### Supported LSP features:
+* Go To Definition for WML macro calls.
+* Hover info for WML macro calls.
+* Completion for macro directives and macro calls.
+
+Note: this is still very much a prototype. Please be forgiving and report any errors you come across. A log is usually available in Output tab in VSCode under WML LSP Server category.
 
 ## Release Notes
 
