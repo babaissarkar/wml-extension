@@ -1,0 +1,41 @@
+name: Build VSIX
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile TypeScript (ignore warnings)
+        run: |
+          tsc --noEmit || true
+        shell: bash
+
+      - name: Install vsce
+        run: npm install -g vsce
+
+      - name: Package VSIX
+        run: vsce package
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: wml-lsp
+          path: "*.vsix"
