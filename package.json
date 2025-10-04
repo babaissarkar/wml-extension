@@ -59,10 +59,10 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
+		"vsce": "^2.15.0",
 		"@types/vscode": "^1.75.0",
 		"ts-loader": "^9.5.1",
-		"typescript": "^5.9.2",
-		"vscode-languageclient": "^9.0.1"
+		"typescript": "^5.9.2"
 	},
 	"repository": {
 		"url": "https://github.com/babaissarkar/wml-extension.git"
