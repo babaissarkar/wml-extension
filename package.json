@@ -8,7 +8,7 @@
 		"url": "https://github.com/babaissarkar/wml-extension/issues"
 	},
 	"engines": {
-		"vscode": "^1.104.0"
+		"vscode": "^1.75.0"
 	},
 	"categories": [
 		"Programming Languages"
@@ -59,7 +59,7 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.104.0",
+		"@types/vscode": "^1.75.0",
 		"ts-loader": "^9.5.1",
 		"typescript": "^5.9.2",
 		"vscode-languageclient": "^9.0.1"
