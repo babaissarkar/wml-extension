@@ -24,7 +24,7 @@ jobs:
         shell: bash
 
       - name: Install vsce
-        run: npm install -g vsce
+        run: npm install -g vscode-languageclient vsce
 
       - name: Package VSIX
         run: vsce package --out ./wml-lsp.vsix
