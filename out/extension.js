@@ -60,8 +60,8 @@ function activate(context) {
             throw new Error("Workspace root not found");
         }
         const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-        const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the data directory');
-        const userDataDir = yield requireSetting('wml', 'userDataDir', 'Please enter the user data directory');
+        const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory');
+        const userDataDir = yield requireSetting('wml', 'userDataDir', 'Please enter the Wesnoth userdata directory');
         if (!dataDir || !userDataDir) {
             return; // bail out if user canceled
         }
