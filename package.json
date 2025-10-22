@@ -51,6 +51,11 @@
 					"type": "string",
 					"default": "",
 					"description": "Path to Wesnoth userdata directory"
+				},
+				"wml.defines": {
+					"type": "string",
+					"default": "",
+					"description": "Any additional defines, like this: `CAMPAIGN_MY_CAMPAIGN=true,CAMPAIGN_MY_CAMPAIGN=something...`"
 				}
 			}
 		}

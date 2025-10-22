@@ -8,9 +8,9 @@ import { CloseAction, ErrorAction, LanguageClient, LanguageClientOptions, Server
 let client: LanguageClient;
 
 /**
- * Ensures a string setting is set. If empty/undefined, asks the user for input.
- * Optionally saves the user’s input back into settings.
- */
+* Ensures a string setting is set. If empty/undefined, asks the user for input.
+* Optionally saves the user’s input back into settings.
+*/
 export async function requireSetting(
     section: string,              // e.g. "myExtension"
     key: string,                  // e.g. "coreIncludeDir"
@@ -61,13 +61,19 @@ export async function activate(context: vscode.ExtensionContext) {
     const dataDir = await requireSetting(
         'wml',
         'dataDir',
-        'Please enter the Wesnoth gamedata directory'
+        'Please enter the Wesnoth gamedata directory. (Could be set later via Settings)'
     );
 
     const userDataDir = await requireSetting(
         'wml',
         'userDataDir',
-        'Please enter the Wesnoth userdata directory'
+        'Please enter the Wesnoth userdata directory. (Could be set later via Settings)'
+    );
+
+    const defines = await requireSetting(
+        'wml',
+        'defines',
+        'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (Could be set later via Settings)'
     );
 
     if (!dataDir || !userDataDir) {
@@ -75,14 +81,24 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     const coreIncludeDir: string = path.join(dataDir, 'core', 'macros');
+    const macroArgs = defines
+        ? defines
+        .split(",")
+        .map(pair => pair.split("="))
+        .filter(([key, value]) => key && value) // ignore malformed ones
+        .flatMap(([key, value]) => ["-d", key.trim(), value.trim()])
+        : [];
+
     const args: string[] = [
         '-jar', serverJar,
         '-s',
         '-i', workspaceRoot,
         '-datadir', dataDir,
         '-userdatadir', userDataDir,
-        '-include', coreIncludeDir
+        '-include', coreIncludeDir,
+        ...macroArgs // safely adds nothing if macros == ""
     ];
+
 
     const serverOptions: ServerOptions = {
         run: { command: 'java', args },
