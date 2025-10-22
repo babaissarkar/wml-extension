@@ -21,6 +21,9 @@ is an [open source](https://opensource.org/faq#osd), turn-based strategy game wi
 * Go To Definition for WML macro calls.
 * Hover info for WML macro calls.
 * Completion for macro directives and macro calls.
+* Hover info for WML paths. Show image preview if path is image.
+* Completion for tag names.
+* Shows help page link for tag names on hover.
 
 Note: this is still very much a prototype. Please be forgiving and report any errors you come across. A log is usually available in Output tab in VSCode under WML LSP Server category.
 
