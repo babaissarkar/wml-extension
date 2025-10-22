@@ -10,7 +10,9 @@ is an [open source](https://opensource.org/faq#osd), turn-based strategy game wi
 ([Wesnoth Homepage](https://www.wesnoth.org/))
 
 ### How to Use/Install the version 2.0.0 with LSP support
-1. Install a Java runtime (JRE), like from [here](https://adoptium.net/temurin/releases/).*. Enter Wesnoth gamedata path and userdata path in the prompt after you install it.
+1. Install a Java runtime (JRE), like from [here](https://adoptium.net/temurin/releases/).
+2. Uninstall previous version and install the VSIX extension from this repo (available from latest CI runs, check Actions tab above).
+3. Enter Wesnoth gamedata path and userdata path in the prompt after you install it, launch VSCode and open a .cfg file.
 4. That's it. You will get success indication like this:
 
 <img width="588" height="173" alt="Screenshot from 2025-10-04 16-28-22" src="https://github.com/user-attachments/assets/7a10375b-0471-46e2-bab5-3810327d75ef" />
