@@ -99,6 +99,7 @@ export async function activate(context: vscode.ExtensionContext) {
         ...macroArgs // safely adds nothing if macros == ""
     ];
 
+    vscode.window.showInformationMessage(`Running: java ${args.join(' ')}`);
 
     const serverOptions: ServerOptions = {
         run: { command: 'java', args },

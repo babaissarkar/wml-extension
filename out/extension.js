@@ -83,6 +83,7 @@ function activate(context) {
             '-include', coreIncludeDir,
             ...macroArgs // safely adds nothing if macros == ""
         ];
+        vscode.window.showInformationMessage(`Running: java ${args.join(' ')}`);
         const serverOptions = {
             run: { command: 'java', args },
             debug: { command: 'java', args }
