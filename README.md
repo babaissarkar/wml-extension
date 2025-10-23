@@ -27,6 +27,9 @@ is an [open source](https://opensource.org/faq#osd), turn-based strategy game wi
 
 Note: this is still very much a prototype. Please be forgiving and report any errors you come across. A log is usually available in Output tab in VSCode under WML LSP Server category.
 
+### Extension Preferences
+<img width="841" height="402" alt="Screenshot from 2025-10-23 12-57-30" src="https://github.com/user-attachments/assets/fa0cbb93-ca71-4065-a841-cf2a42c9b80b" />
+
 ## Release Notes
 
 ### Version 2.0.0
