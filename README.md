@@ -25,6 +25,7 @@ is an [open source](https://opensource.org/faq#osd), turn-based strategy game wi
 * Completion for tag names.
 * Shows help page link for tag names on hover.
 * Preliminary Wesnoth path autocomplete. (Triggered by '/')
+* Wesnoth Unit Type ids autocomplete. (Triggered by '=')
 
 Note: this is still very much a prototype. Please be forgiving and report any errors you come across. A log is usually available in Output tab in VSCode under WML LSP Server category.
 
