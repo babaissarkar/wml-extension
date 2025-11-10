@@ -81,6 +81,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     const coreIncludeDir: string = path.join(dataDir, 'core', 'macros');
+    const coreUnitsDir: string = path.join(dataDir, 'core', 'units.cfg');
     const macroArgs = defines
         ? defines
         .split(",")
@@ -96,6 +97,7 @@ export async function activate(context: vscode.ExtensionContext) {
         '-datadir', dataDir,
         '-userdatadir', userDataDir,
         '-include', coreIncludeDir,
+        '-include', coreUnitsDir,
         ...macroArgs // safely adds nothing if macros == ""
     ];
 

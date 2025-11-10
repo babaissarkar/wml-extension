@@ -67,6 +67,7 @@ function activate(context) {
             return; // bail out if user canceled
         }
         const coreIncludeDir = path.join(dataDir, 'core', 'macros');
+        const coreUnitsDir = path.join(dataDir, 'core', 'units.cfg');
         const macroArgs = defines
             ? defines
                 .split(",")
@@ -81,6 +82,7 @@ function activate(context) {
             '-datadir', dataDir,
             '-userdatadir', userDataDir,
             '-include', coreIncludeDir,
+            '-include', coreUnitsDir,
             ...macroArgs // safely adds nothing if macros == ""
         ];
         vscode.window.showInformationMessage(`Running: java ${args.join(' ')}`);
