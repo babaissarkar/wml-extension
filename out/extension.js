@@ -63,15 +63,15 @@ function downloadFile(url, destination) {
         request.on('error', reject);
     });
 }
-function ensureStandaloneServerBinary(context) {
+function ensureStandaloneServerBinary(serverDir) {
     return __awaiter(this, void 0, void 0, function* () {
         const downloadUrl = STANDALONE_LSP_URLS[process.platform];
         if (!downloadUrl) {
             return undefined;
         }
         const outputName = process.platform === 'win32' ? 'WML.exe' : 'WML.AppImage';
-        const outputPath = path.join(context.globalStorageUri.fsPath, outputName);
-        yield fsp.mkdir(context.globalStorageUri.fsPath, { recursive: true });
+        const outputPath = path.join(serverDir, outputName);
+        yield fsp.mkdir(serverDir, { recursive: true });
         if (!fs.existsSync(outputPath)) {
             yield vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
@@ -124,7 +124,8 @@ function requireSetting(section_1, key_1, prompt_1, placeHolder_1) {
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
         // Start LSP client
-        const serverJar = context.asAbsolutePath('server/wml.jar');
+        const serverDir = context.asAbsolutePath('server');
+        const serverJar = path.join(serverDir, 'wml.jar');
         // Ensure workspace root exists
         if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
             vscode.window.showErrorMessage("No workspace folder open. Please open a folder before starting the WML language server.");
@@ -166,7 +167,7 @@ function activate(context) {
             };
         }
         else {
-            const standaloneBinary = yield ensureStandaloneServerBinary(context);
+            const standaloneBinary = yield ensureStandaloneServerBinary(serverDir);
             if (!standaloneBinary) {
                 vscode.window.showErrorMessage(`Java is not installed and no standalone WML language server is available for ${os.platform()}.`);
                 return;
