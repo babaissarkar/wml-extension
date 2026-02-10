@@ -58,16 +58,16 @@ function downloadFile(url: string, destination: string): Promise<void> {
     });
 }
 
-async function ensureStandaloneServerBinary(context: vscode.ExtensionContext): Promise<string | undefined> {
+async function ensureStandaloneServerBinary(serverDir: string): Promise<string | undefined> {
     const downloadUrl = STANDALONE_LSP_URLS[process.platform];
     if (!downloadUrl) {
         return undefined;
     }
 
     const outputName = process.platform === 'win32' ? 'WML.exe' : 'WML.AppImage';
-    const outputPath = path.join(context.globalStorageUri.fsPath, outputName);
+    const outputPath = path.join(serverDir, outputName);
 
-    await fsp.mkdir(context.globalStorageUri.fsPath, { recursive: true });
+    await fsp.mkdir(serverDir, { recursive: true });
 
     if (!fs.existsSync(outputPath)) {
         await vscode.window.withProgress(
@@ -129,7 +129,8 @@ export async function requireSetting(
 
 export async function activate(context: vscode.ExtensionContext) {
     // Start LSP client
-    const serverJar = context.asAbsolutePath('server/wml.jar');
+    const serverDir = context.asAbsolutePath('server');
+    const serverJar = path.join(serverDir, 'wml.jar');
 
     // Ensure workspace root exists
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
@@ -194,7 +195,7 @@ export async function activate(context: vscode.ExtensionContext) {
             debug: { command: 'java', args }
         };
     } else {
-        const standaloneBinary = await ensureStandaloneServerBinary(context);
+        const standaloneBinary = await ensureStandaloneServerBinary(serverDir);
 
         if (!standaloneBinary) {
             vscode.window.showErrorMessage(
