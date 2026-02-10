@@ -14,9 +14,80 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireSetting = requireSetting;
 exports.activate = activate;
 const vscode = require("vscode");
+const fs = require("fs");
+const fsp = require("fs/promises");
+const https = require("https");
+const os = require("os");
 const path = require("path");
+const promises_1 = require("stream/promises");
+const util_1 = require("util");
+const child_process_1 = require("child_process");
 const node_1 = require("vscode-languageclient/node");
 let client;
+const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
+const STANDALONE_LSP_URLS = {
+    win32: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML.exe',
+    linux: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML.AppImage'
+};
+function hasJavaRuntime() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            yield execFileAsync('java', ['-version']);
+            return true;
+        }
+        catch (_a) {
+            return false;
+        }
+    });
+}
+function downloadFile(url, destination) {
+    return new Promise((resolve, reject) => {
+        const request = https.get(url, (response) => {
+            if (response.statusCode &&
+                response.statusCode >= 300 &&
+                response.statusCode < 400 &&
+                response.headers.location) {
+                const redirectedUrl = new URL(response.headers.location, url).toString();
+                response.resume();
+                downloadFile(redirectedUrl, destination).then(resolve).catch(reject);
+                return;
+            }
+            if (response.statusCode !== 200) {
+                response.resume();
+                reject(new Error(`Failed to download LSP binary. HTTP ${response.statusCode}`));
+                return;
+            }
+            const output = fs.createWriteStream(destination);
+            (0, promises_1.pipeline)(response, output).then(resolve).catch(reject);
+        });
+        request.on('error', reject);
+    });
+}
+function ensureStandaloneServerBinary(context) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const downloadUrl = STANDALONE_LSP_URLS[process.platform];
+        if (!downloadUrl) {
+            return undefined;
+        }
+        const outputName = process.platform === 'win32' ? 'WML.exe' : 'WML.AppImage';
+        const outputPath = path.join(context.globalStorageUri.fsPath, outputName);
+        yield fsp.mkdir(context.globalStorageUri.fsPath, { recursive: true });
+        if (!fs.existsSync(outputPath)) {
+            yield vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                cancellable: false,
+                title: 'WML: Downloading language server binary'
+            }, (progress) => __awaiter(this, void 0, void 0, function* () {
+                progress.report({ message: `Fetching ${outputName}...` });
+                yield downloadFile(downloadUrl, outputPath);
+            }));
+        }
+        if (process.platform !== 'win32') {
+            yield fsp.chmod(outputPath, 0o755);
+        }
+        return outputPath;
+    });
+}
 /**
 * Ensures a string setting is set. If empty/undefined, asks the user for input.
 * Optionally saves the user’s input back into settings.
@@ -75,21 +146,37 @@ function activate(context) {
                 .filter(([key, value]) => key && value) // ignore malformed ones
                 .flatMap(([key, value]) => ["-d", key.trim(), value.trim()])
             : [];
-        const args = [
-            '-jar', serverJar,
+        const sharedArgs = [
             '-s',
             '-i', workspaceRoot,
             '-datadir', dataDir,
             '-userdatadir', userDataDir,
             '-include', coreIncludeDir,
             '-include', coreUnitsDir,
-            ...macroArgs // safely adds nothing if macros == ""
+            ...macroArgs
         ];
-        vscode.window.showInformationMessage(`Running: java ${args.join(' ')}`);
-        const serverOptions = {
-            run: { command: 'java', args },
-            debug: { command: 'java', args }
-        };
+        const javaInstalled = yield hasJavaRuntime();
+        let serverOptions;
+        if (javaInstalled) {
+            const args = ['-jar', serverJar, ...sharedArgs];
+            vscode.window.showInformationMessage(`Running: java ${args.join(' ')}`);
+            serverOptions = {
+                run: { command: 'java', args },
+                debug: { command: 'java', args }
+            };
+        }
+        else {
+            const standaloneBinary = yield ensureStandaloneServerBinary(context);
+            if (!standaloneBinary) {
+                vscode.window.showErrorMessage(`Java is not installed and no standalone WML language server is available for ${os.platform()}.`);
+                return;
+            }
+            vscode.window.showInformationMessage(`Running: ${standaloneBinary} ${sharedArgs.join(' ')}`);
+            serverOptions = {
+                run: { command: standaloneBinary, args: sharedArgs },
+                debug: { command: standaloneBinary, args: sharedArgs }
+            };
+        }
         const clientOptions = {
             documentSelector: [{ scheme: 'file', language: 'wml' }],
             errorHandler: {
@@ -101,7 +188,7 @@ function activate(context) {
                 }
             }
         };
-        const client = new node_1.LanguageClient('wmlLanguageServer', 'WML Language Server', serverOptions, clientOptions);
+        client = new node_1.LanguageClient('wmlLanguageServer', 'WML Language Server', serverOptions, clientOptions);
         client.start();
     });
 }
