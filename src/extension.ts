@@ -58,6 +58,21 @@ function downloadFile(url: string, destination: string): Promise<void> {
     });
 }
 
+
+async function downloadFileAtomic(url: string, destination: string): Promise<void> {
+    const tempPath = `${destination}.tmp`;
+
+    await fsp.rm(tempPath, { force: true });
+
+    try {
+        await downloadFile(url, tempPath);
+        await fsp.rename(tempPath, destination);
+    } catch (error) {
+        await fsp.rm(tempPath, { force: true });
+        throw error;
+    }
+}
+
 async function ensureStandaloneServerBinary(serverDir: string): Promise<string | undefined> {
     const downloadUrl = STANDALONE_LSP_URLS[process.platform];
     if (!downloadUrl) {
@@ -78,7 +93,7 @@ async function ensureStandaloneServerBinary(serverDir: string): Promise<string |
             },
             async (progress) => {
                 progress.report({ message: `Fetching ${outputName}...` });
-                await downloadFile(downloadUrl, outputPath);
+                await downloadFileAtomic(downloadUrl, outputPath);
             }
         );
     }
