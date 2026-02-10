@@ -63,6 +63,20 @@ function downloadFile(url, destination) {
         request.on('error', reject);
     });
 }
+function downloadFileAtomic(url, destination) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const tempPath = `${destination}.tmp`;
+        yield fsp.rm(tempPath, { force: true });
+        try {
+            yield downloadFile(url, tempPath);
+            yield fsp.rename(tempPath, destination);
+        }
+        catch (error) {
+            yield fsp.rm(tempPath, { force: true });
+            throw error;
+        }
+    });
+}
 function ensureStandaloneServerBinary(serverDir) {
     return __awaiter(this, void 0, void 0, function* () {
         const downloadUrl = STANDALONE_LSP_URLS[process.platform];
@@ -79,7 +93,7 @@ function ensureStandaloneServerBinary(serverDir) {
                 title: 'WML: Downloading language server binary'
             }, (progress) => __awaiter(this, void 0, void 0, function* () {
                 progress.report({ message: `Fetching ${outputName}...` });
-                yield downloadFile(downloadUrl, outputPath);
+                yield downloadFileAtomic(downloadUrl, outputPath);
             }));
         }
         if (process.platform !== 'win32') {
