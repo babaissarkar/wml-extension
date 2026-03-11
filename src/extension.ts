@@ -142,6 +142,43 @@ export async function requireSetting(
     return value;
 }
 
+/**
+* Optional setting. If empty/undefined, asks the user for input.
+* Optionally saves the user’s input back into settings.
+* FIXME: this will keep prompting the user if not set on every launch.
+* but this is optional setting so should be shown once maybe?
+*/
+
+export async function optionalSetting(
+    section: string,              // e.g. "myExtension"
+    key: string,                  // e.g. "coreIncludeDir"
+    prompt: string,               // input box prompt
+    placeHolder?: string,         // optional placeholder
+    save: boolean = true          // save user input back to settings.json
+): Promise<string | undefined> {
+
+    const config = vscode.workspace.getConfiguration(section);
+    let value: string = config.get<string>(key, '');
+
+    if (!value) {
+        const input = await vscode.window.showInputBox({
+            prompt,
+            placeHolder,
+            ignoreFocusOut: true
+        });
+
+        if (input && input.trim().length > 0) {
+            value = input.trim();
+
+            if (save) {
+                await config.update(key, value, vscode.ConfigurationTarget.Workspace);
+            }
+        }
+    }
+
+    return undefined;
+}
+
 export async function activate(context: vscode.ExtensionContext) {
     // Start LSP client
     const serverDir = context.asAbsolutePath('server');
@@ -155,8 +192,6 @@ export async function activate(context: vscode.ExtensionContext) {
         throw new Error("Workspace root not found");
     }
 
-    const workspaceRoot: string = vscode.workspace.workspaceFolders[0].uri.fsPath;
-
     const dataDir = await requireSetting(
         'wml',
         'dataDir',
@@ -169,7 +204,7 @@ export async function activate(context: vscode.ExtensionContext) {
         'Please enter the Wesnoth userdata directory. (Could be set later via Settings)'
     );
 
-    const defines = await requireSetting(
+    const defines = await optionalSetting(
         'wml',
         'defines',
         'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (Could be set later via Settings)'
@@ -183,15 +218,14 @@ export async function activate(context: vscode.ExtensionContext) {
     const coreUnitsDir: string = path.join(dataDir, 'core', 'units.cfg');
     const macroArgs = defines
         ? defines
-        .split(",")
-        .map(pair => pair.split("="))
-        .filter(([key, value]) => key && value) // ignore malformed ones
-        .flatMap(([key, value]) => ["-d", key.trim(), value.trim()])
+            .split(",")
+            .map(pair => pair.split("="))
+            .filter(([key, value]) => key && value) // ignore malformed ones
+            .flatMap(([key, value]) => ["-d", key.trim(), value.trim()])
         : [];
 
     const sharedArgs: string[] = [
         '-s',
-        '-i', workspaceRoot,
         '-datadir', dataDir,
         '-userdatadir', userDataDir,
         '-include', coreIncludeDir,

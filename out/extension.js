@@ -12,6 +12,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireSetting = requireSetting;
+exports.optionalSetting = optionalSetting;
 exports.activate = activate;
 const vscode = require("vscode");
 const fs = require("fs");
@@ -135,6 +136,37 @@ function requireSetting(section_1, key_1, prompt_1, placeHolder_1) {
         return value;
     });
 }
+/**
+* Optional setting. If empty/undefined, asks the user for input.
+* Optionally saves the user’s input back into settings.
+* FIXME: this will keep prompting the user if not set on every launch.
+* but this is optional setting so should be shown once maybe?
+*/
+function optionalSetting(section_1, key_1, prompt_1, placeHolder_1) {
+    return __awaiter(this, arguments, void 0, function* (section, // e.g. "myExtension"
+    key, // e.g. "coreIncludeDir"
+    prompt, // input box prompt
+    placeHolder, // optional placeholder
+    save = true // save user input back to settings.json
+    ) {
+        const config = vscode.workspace.getConfiguration(section);
+        let value = config.get(key, '');
+        if (!value) {
+            const input = yield vscode.window.showInputBox({
+                prompt,
+                placeHolder,
+                ignoreFocusOut: true
+            });
+            if (input && input.trim().length > 0) {
+                value = input.trim();
+                if (save) {
+                    yield config.update(key, value, vscode.ConfigurationTarget.Workspace);
+                }
+            }
+        }
+        return undefined;
+    });
+}
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
         // Start LSP client
@@ -145,10 +177,9 @@ function activate(context) {
             vscode.window.showErrorMessage("No workspace folder open. Please open a folder before starting the WML language server.");
             throw new Error("Workspace root not found");
         }
-        const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
         const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory. (Could be set later via Settings)');
         const userDataDir = yield requireSetting('wml', 'userDataDir', 'Please enter the Wesnoth userdata directory. (Could be set later via Settings)');
-        const defines = yield requireSetting('wml', 'defines', 'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (Could be set later via Settings)');
+        const defines = yield optionalSetting('wml', 'defines', 'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (Could be set later via Settings)');
         if (!dataDir || !userDataDir) {
             return; // bail out if user canceled
         }
@@ -163,7 +194,6 @@ function activate(context) {
             : [];
         const sharedArgs = [
             '-s',
-            '-i', workspaceRoot,
             '-datadir', dataDir,
             '-userdatadir', userDataDir,
             '-include', coreIncludeDir,
