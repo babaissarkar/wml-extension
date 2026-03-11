@@ -148,7 +148,6 @@ export async function requireSetting(
 * FIXME: this will keep prompting the user if not set on every launch.
 * but this is optional setting so should be shown once maybe?
 */
-
 export async function optionalSetting(
     section: string,              // e.g. "myExtension"
     key: string,                  // e.g. "coreIncludeDir"
