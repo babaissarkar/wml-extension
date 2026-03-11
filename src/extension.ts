@@ -114,7 +114,6 @@ export async function requireSetting(
     key: string,                  // e.g. "coreIncludeDir"
     prompt: string,               // input box prompt
     placeHolder?: string,         // optional placeholder
-    save: boolean = true          // save user input back to settings.json
 ): Promise<string | undefined> {
 
     const config = vscode.workspace.getConfiguration(section);
@@ -129,10 +128,7 @@ export async function requireSetting(
 
         if (input && input.trim().length > 0) {
             value = input.trim();
-
-            if (save) {
-                await config.update(key, value, vscode.ConfigurationTarget.Workspace);
-            }
+            await config.update(key, value, vscode.ConfigurationTarget.Workspace);
         } else {
             vscode.window.showErrorMessage(`Required setting "${section}.${key}" is missing.`);
             return undefined;
@@ -153,7 +149,6 @@ export async function optionalSetting(
     key: string,                  // e.g. "coreIncludeDir"
     prompt: string,               // input box prompt
     placeHolder?: string,         // optional placeholder
-    save: boolean = true          // save user input back to settings.json
 ): Promise<string | undefined> {
 
     const config = vscode.workspace.getConfiguration(section);
@@ -168,10 +163,7 @@ export async function optionalSetting(
 
         if (input && input.trim().length > 0) {
             value = input.trim();
-
-            if (save) {
-                await config.update(key, value, vscode.ConfigurationTarget.Workspace);
-            }
+            await config.update(key, value, vscode.ConfigurationTarget.Workspace);
         }
     }
 
@@ -203,11 +195,16 @@ export async function activate(context: vscode.ExtensionContext) {
         'Please enter the Wesnoth userdata directory. (Could be set later via Settings)'
     );
 
-    const defines = await optionalSetting(
-        'wml',
-        'defines',
-        'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (Could be set later via Settings)'
-    );
+    let shown_once = context.workspaceState.get<boolean>('wml.define_prompt_shown_once', false);
+    let defines : string | undefined;
+    if(!shown_once) {
+        defines = await optionalSetting(
+            'wml',
+            'defines',
+            'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (This prompt will be shown once, but Defines could be set later via Settings)'
+        );
+        await context.workspaceState.update('wml.define_prompt_shown_once', true);
+    }
 
     if (!dataDir || !userDataDir) {
         return; // bail out if user canceled

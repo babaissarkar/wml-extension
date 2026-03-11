@@ -107,13 +107,11 @@ function ensureStandaloneServerBinary(serverDir) {
 * Ensures a string setting is set. If empty/undefined, asks the user for input.
 * Optionally saves the user’s input back into settings.
 */
-function requireSetting(section_1, key_1, prompt_1, placeHolder_1) {
-    return __awaiter(this, arguments, void 0, function* (section, // e.g. "myExtension"
-    key, // e.g. "coreIncludeDir"
-    prompt, // input box prompt
-    placeHolder, // optional placeholder
-    save = true // save user input back to settings.json
-    ) {
+function requireSetting(section, // e.g. "myExtension"
+key, // e.g. "coreIncludeDir"
+prompt, // input box prompt
+placeHolder) {
+    return __awaiter(this, void 0, void 0, function* () {
         const config = vscode.workspace.getConfiguration(section);
         let value = config.get(key, '');
         if (!value) {
@@ -124,9 +122,7 @@ function requireSetting(section_1, key_1, prompt_1, placeHolder_1) {
             });
             if (input && input.trim().length > 0) {
                 value = input.trim();
-                if (save) {
-                    yield config.update(key, value, vscode.ConfigurationTarget.Workspace);
-                }
+                yield config.update(key, value, vscode.ConfigurationTarget.Workspace);
             }
             else {
                 vscode.window.showErrorMessage(`Required setting "${section}.${key}" is missing.`);
@@ -142,13 +138,11 @@ function requireSetting(section_1, key_1, prompt_1, placeHolder_1) {
 * FIXME: this will keep prompting the user if not set on every launch.
 * but this is optional setting so should be shown once maybe?
 */
-function optionalSetting(section_1, key_1, prompt_1, placeHolder_1) {
-    return __awaiter(this, arguments, void 0, function* (section, // e.g. "myExtension"
-    key, // e.g. "coreIncludeDir"
-    prompt, // input box prompt
-    placeHolder, // optional placeholder
-    save = true // save user input back to settings.json
-    ) {
+function optionalSetting(section, // e.g. "myExtension"
+key, // e.g. "coreIncludeDir"
+prompt, // input box prompt
+placeHolder) {
+    return __awaiter(this, void 0, void 0, function* () {
         const config = vscode.workspace.getConfiguration(section);
         let value = config.get(key, '');
         if (!value) {
@@ -159,9 +153,7 @@ function optionalSetting(section_1, key_1, prompt_1, placeHolder_1) {
             });
             if (input && input.trim().length > 0) {
                 value = input.trim();
-                if (save) {
-                    yield config.update(key, value, vscode.ConfigurationTarget.Workspace);
-                }
+                yield config.update(key, value, vscode.ConfigurationTarget.Workspace);
             }
         }
         return undefined;
@@ -179,7 +171,12 @@ function activate(context) {
         }
         const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory. (Could be set later via Settings)');
         const userDataDir = yield requireSetting('wml', 'userDataDir', 'Please enter the Wesnoth userdata directory. (Could be set later via Settings)');
-        const defines = yield optionalSetting('wml', 'defines', 'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (Could be set later via Settings)');
+        let shown_once = context.workspaceState.get('wml.define_prompt_shown_once', false);
+        let defines;
+        if (!shown_once) {
+            defines = yield optionalSetting('wml', 'defines', 'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (This prompt will be shown once, but Defines could be set later via Settings)');
+            yield context.workspaceState.update('wml.define_prompt_shown_once', true);
+        }
         if (!dataDir || !userDataDir) {
             return; // bail out if user canceled
         }
