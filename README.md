@@ -1,6 +1,6 @@
-# WML Syntax Highlighting
+# WML Syntax Highlighting and LSP
 
-This is a small syntax highlighting extention for the Wesnoth Markup Language (WML). It is used to create addons for Battle for Wesnoth.
+This is a syntax highlighting and intellisense/LSP (partial) extention for the Wesnoth Markup Language (WML). It is used to create addons for Battle for Wesnoth.
 
 > Please use the WML color theme to get the best results!
 
