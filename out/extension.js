@@ -172,10 +172,17 @@ function activate(context) {
         const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory. (Could be set later via Settings)');
         const userDataDir = yield requireSetting('wml', 'userDataDir', 'Please enter the Wesnoth userdata directory. (Could be set later via Settings)');
         let shown_once = context.workspaceState.get('wml.define_prompt_shown_once', false);
-        let defines;
+        let defines = undefined;
         if (!shown_once) {
             defines = yield optionalSetting('wml', 'defines', 'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (This prompt will be shown once, but Defines could be set later via Settings)');
             yield context.workspaceState.update('wml.define_prompt_shown_once', true);
+        }
+        else {
+            const config = vscode.workspace.getConfiguration('wml');
+            defines = config.get('defines', '');
+            if (defines == '') {
+                defines = undefined;
+            }
         }
         if (!dataDir || !userDataDir) {
             return; // bail out if user canceled

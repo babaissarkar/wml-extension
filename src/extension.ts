@@ -196,7 +196,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     let shown_once = context.workspaceState.get<boolean>('wml.define_prompt_shown_once', false);
-    let defines : string | undefined;
+    let defines : string | undefined = undefined;
     if(!shown_once) {
         defines = await optionalSetting(
             'wml',
@@ -204,6 +204,12 @@ export async function activate(context: vscode.ExtensionContext) {
             'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (This prompt will be shown once, but Defines could be set later via Settings)'
         );
         await context.workspaceState.update('wml.define_prompt_shown_once', true);
+    } else {
+        const config = vscode.workspace.getConfiguration('wml');
+        defines = config.get<string>('defines', '');
+        if(defines == '') {
+            defines = undefined;
+        }
     }
 
     if (!dataDir || !userDataDir) {
