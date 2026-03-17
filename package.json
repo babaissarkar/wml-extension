@@ -3,7 +3,7 @@
 	"displayName": "WML v2 with LSP",
 	"description": "Wesnoth Markup Language LSP and Syntax Highlighting",
 	"publisher": "Bitron",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"bugs": {
 		"url": "https://github.com/babaissarkar/wml-extension/issues"
 	},
@@ -16,7 +16,7 @@
 			"name": "Subhraman Sarkar",
 			"url": "https://github.com/babaissarkar"
 		}
-	]
+	],
 	"engines": {
 		"vscode": "^1.75.0"
 	},
