@@ -52,6 +52,11 @@
 		"configuration": {
 			"title": "WML Extension Settings",
 			"properties": {
+				"wml.javapath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to Java command"
+				},
 				"wml.dataDir": {
 					"type": "string",
 					"default": "",

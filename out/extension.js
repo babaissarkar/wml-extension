@@ -18,7 +18,6 @@ const vscode = require("vscode");
 const fs = require("fs");
 const fsp = require("fs/promises");
 const https = require("https");
-const os = require("os");
 const path = require("path");
 const promises_1 = require("stream/promises");
 const util_1 = require("util");
@@ -33,10 +32,13 @@ const STANDALONE_LSP_URLS = {
 function hasJavaRuntime() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            yield execFileAsync('java', ['-version']);
+            const config = vscode.workspace.getConfiguration('wml');
+            let path = config.get('javapath', '');
+            yield execFileAsync(path == '' ? 'java' : path, ['-version']);
             return true;
         }
         catch (_a) {
+            vscode.window.showErrorMessage(`Invalid Java path: ${path}`);
             return false;
         }
     });
@@ -169,6 +171,10 @@ function activate(context) {
             vscode.window.showErrorMessage("No workspace folder open. Please open a folder before starting the WML language server.");
             throw new Error("Workspace root not found");
         }
+        let javaInstalled = yield hasJavaRuntime();
+        if (!javaInstalled) {
+            yield requireSetting('wml', 'javapath', 'Please enter Java Runtime path. (Could be set later via Settings)');
+        }
         const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory. (Could be set later via Settings)');
         const userDataDir = yield requireSetting('wml', 'userDataDir', 'Please enter the Wesnoth userdata directory. (Could be set later via Settings)');
         let shown_once = context.workspaceState.get('wml.define_prompt_shown_once', false);
@@ -204,28 +210,32 @@ function activate(context) {
             '-include', coreUnitsDir,
             ...macroArgs
         ];
-        const javaInstalled = yield hasJavaRuntime();
+        // javaInstalled = await hasJavaRuntime();
         let serverOptions;
-        if (javaInstalled) {
-            const args = ['-jar', serverJar, ...sharedArgs];
-            vscode.window.showInformationMessage(`Running: java ${args.join(' ')}`);
-            serverOptions = {
-                run: { command: 'java', args },
-                debug: { command: 'java', args }
-            };
-        }
-        else {
-            const standaloneBinary = yield ensureStandaloneServerBinary(serverDir);
-            if (!standaloneBinary) {
-                vscode.window.showErrorMessage(`Java is not installed and no standalone WML language server is available for ${os.platform()}.`);
-                return;
-            }
-            vscode.window.showInformationMessage(`Running: ${standaloneBinary} ${sharedArgs.join(' ')}`);
-            serverOptions = {
-                run: { command: standaloneBinary, args: sharedArgs },
-                debug: { command: standaloneBinary, args: sharedArgs }
-            };
-        }
+        // if(javaInstalled) {
+        const args = ['-jar', serverJar, ...sharedArgs];
+        const config = vscode.workspace.getConfiguration('wml');
+        const raw = (config.get('javapath', '') || '').trim();
+        const javacmd = raw === '' ? 'java' : raw;
+        vscode.window.showInformationMessage(`Running: ${javacmd} ${args.join(' ')}`);
+        serverOptions = {
+            run: { command: javacmd, args },
+            debug: { command: javacmd, args }
+        };
+        // } else {
+        //     const standaloneBinary = await ensureStandaloneServerBinary(serverDir);
+        //     if (!standaloneBinary) {
+        //         vscode.window.showErrorMessage(
+        //             `Java is not installed and no standalone WML language server is available for ${os.platform()}.`
+        //         );
+        //         return;
+        //     }
+        //     vscode.window.showInformationMessage(`Running: ${standaloneBinary} ${sharedArgs.join(' ')}`);
+        //     serverOptions = {
+        //         run: { command: standaloneBinary, args: sharedArgs },
+        //         debug: { command: standaloneBinary, args: sharedArgs }
+        //     };
+        // }
         const clientOptions = {
             documentSelector: [{ scheme: 'file', language: 'wml' }],
             errorHandler: {

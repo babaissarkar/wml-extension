@@ -22,9 +22,12 @@ const STANDALONE_LSP_URLS: Record<string, string> = {
 
 async function hasJavaRuntime(): Promise<boolean> {
     try {
-        await execFileAsync('java', ['-version']);
+        const config = vscode.workspace.getConfiguration('wml');
+        let path: string = config.get<string>('javapath', '');
+        await execFileAsync(path == '' ? 'java' : path, ['-version']);
         return true;
     } catch {
+        vscode.window.showErrorMessage(`Invalid Java path: ${path}`);
         return false;
     }
 }
@@ -183,6 +186,15 @@ export async function activate(context: vscode.ExtensionContext) {
         throw new Error("Workspace root not found");
     }
 
+    let javaInstalled = await hasJavaRuntime();
+    if(!javaInstalled) {
+        await requireSetting(
+            'wml',
+            'javapath',
+            'Please enter Java Runtime path. (Could be set later via Settings)'
+        );
+    }
+
     const dataDir = await requireSetting(
         'wml',
         'dataDir',
@@ -235,32 +247,35 @@ export async function activate(context: vscode.ExtensionContext) {
         ...macroArgs
     ];
 
-    const javaInstalled = await hasJavaRuntime();
+    // javaInstalled = await hasJavaRuntime();
     let serverOptions: ServerOptions;
 
-    if (javaInstalled) {
+    // if(javaInstalled) {
         const args: string[] = ['-jar', serverJar, ...sharedArgs];
-        vscode.window.showInformationMessage(`Running: java ${args.join(' ')}`);
+        const config = vscode.workspace.getConfiguration('wml');
+        const raw = (config.get<string>('javapath', '') || '').trim();
+        const javacmd = raw === '' ? 'java' : raw;
+        vscode.window.showInformationMessage(`Running: ${javacmd} ${args.join(' ')}`);
         serverOptions = {
-            run: { command: 'java', args },
-            debug: { command: 'java', args }
+            run: { command: javacmd, args },
+            debug: { command: javacmd, args }
         };
-    } else {
-        const standaloneBinary = await ensureStandaloneServerBinary(serverDir);
+    // } else {
+    //     const standaloneBinary = await ensureStandaloneServerBinary(serverDir);
 
-        if (!standaloneBinary) {
-            vscode.window.showErrorMessage(
-                `Java is not installed and no standalone WML language server is available for ${os.platform()}.`
-            );
-            return;
-        }
+    //     if (!standaloneBinary) {
+    //         vscode.window.showErrorMessage(
+    //             `Java is not installed and no standalone WML language server is available for ${os.platform()}.`
+    //         );
+    //         return;
+    //     }
 
-        vscode.window.showInformationMessage(`Running: ${standaloneBinary} ${sharedArgs.join(' ')}`);
-        serverOptions = {
-            run: { command: standaloneBinary, args: sharedArgs },
-            debug: { command: standaloneBinary, args: sharedArgs }
-        };
-    }
+    //     vscode.window.showInformationMessage(`Running: ${standaloneBinary} ${sharedArgs.join(' ')}`);
+    //     serverOptions = {
+    //         run: { command: standaloneBinary, args: sharedArgs },
+    //         debug: { command: standaloneBinary, args: sharedArgs }
+    //     };
+    // }
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'wml' }],
