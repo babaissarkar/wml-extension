@@ -33,7 +33,7 @@ function hasJavaRuntime() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const config = vscode.workspace.getConfiguration('wml');
-            let path = config.get('javapath', '');
+            let path = config.get('javaPath', '');
             yield execFileAsync(path == '' ? 'java' : path, ['-version']);
             return true;
         }
@@ -171,9 +171,17 @@ function activate(context) {
             vscode.window.showErrorMessage("No workspace folder open. Please open a folder before starting the WML language server.");
             throw new Error("Workspace root not found");
         }
-        let javaInstalled = yield hasJavaRuntime();
-        if (!javaInstalled) {
-            yield requireSetting('wml', 'javapath', 'Please enter Java Runtime path. (Could be set later via Settings)');
+        const config = vscode.workspace.getConfiguration('wml');
+        const exe = (config.get('exePath', '') || '').trim();
+        let javaInstalled;
+        if (exe === '') {
+            javaInstalled = yield hasJavaRuntime();
+            if (!javaInstalled) {
+                yield requireSetting('wml', 'javaPath', 'Please enter Java Runtime path. (Could be set later via Settings)');
+            }
+        }
+        else {
+            javaInstalled = true; // bypass if exePath exists. TODO exePath should be checked.
         }
         const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory. (Could be set later via Settings)');
         const userDataDir = yield requireSetting('wml', 'userDataDir', 'Please enter the Wesnoth userdata directory. (Could be set later via Settings)');
@@ -184,7 +192,6 @@ function activate(context) {
             yield context.workspaceState.update('wml.define_prompt_shown_once', true);
         }
         else {
-            const config = vscode.workspace.getConfiguration('wml');
             defines = config.get('defines', '');
             if (defines == '') {
                 defines = undefined;
@@ -213,10 +220,19 @@ function activate(context) {
         // javaInstalled = await hasJavaRuntime();
         let serverOptions;
         // if(javaInstalled) {
-        const args = ['-jar', serverJar, ...sharedArgs];
-        const config = vscode.workspace.getConfiguration('wml');
-        const raw = (config.get('javapath', '') || '').trim();
-        const javacmd = raw === '' ? 'java' : raw;
+        let javacmd;
+        let args;
+        if (exe === '') {
+            args = ['-jar', serverJar, ...sharedArgs];
+            const raw = (config.get('javaPath', '') || '').trim();
+            javacmd = raw === '' ? 'java' : raw;
+        }
+        else {
+            // TODO space in javacmd will not be handled!
+            const parts = exe.split(/\s+/);
+            javacmd = parts[0];
+            args = [...parts.slice(1), ...sharedArgs];
+        }
         vscode.window.showInformationMessage(`Running: ${javacmd} ${args.join(' ')}`);
         serverOptions = {
             run: { command: javacmd, args },

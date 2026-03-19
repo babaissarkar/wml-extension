@@ -23,7 +23,7 @@ const STANDALONE_LSP_URLS: Record<string, string> = {
 async function hasJavaRuntime(): Promise<boolean> {
     try {
         const config = vscode.workspace.getConfiguration('wml');
-        let path: string = config.get<string>('javapath', '');
+        let path: string = config.get<string>('javaPath', '');
         await execFileAsync(path == '' ? 'java' : path, ['-version']);
         return true;
     } catch {
@@ -186,13 +186,21 @@ export async function activate(context: vscode.ExtensionContext) {
         throw new Error("Workspace root not found");
     }
 
-    let javaInstalled = await hasJavaRuntime();
-    if(!javaInstalled) {
-        await requireSetting(
-            'wml',
-            'javapath',
-            'Please enter Java Runtime path. (Could be set later via Settings)'
-        );
+    const config = vscode.workspace.getConfiguration('wml');
+    const exe = (config.get<string>('exePath', '') || '').trim();
+
+    let javaInstalled;
+    if(exe === '') {
+        javaInstalled = await hasJavaRuntime();
+        if(!javaInstalled) {
+            await requireSetting(
+                'wml',
+                'javaPath',
+                'Please enter Java Runtime path. (Could be set later via Settings)'
+            );
+        }
+    } else {
+        javaInstalled = true; // bypass if exePath exists. TODO exePath should be checked.
     }
 
     const dataDir = await requireSetting(
@@ -217,7 +225,6 @@ export async function activate(context: vscode.ExtensionContext) {
         );
         await context.workspaceState.update('wml.define_prompt_shown_once', true);
     } else {
-        const config = vscode.workspace.getConfiguration('wml');
         defines = config.get<string>('defines', '');
         if(defines == '') {
             defines = undefined;
@@ -251,10 +258,18 @@ export async function activate(context: vscode.ExtensionContext) {
     let serverOptions: ServerOptions;
 
     // if(javaInstalled) {
-        const args: string[] = ['-jar', serverJar, ...sharedArgs];
-        const config = vscode.workspace.getConfiguration('wml');
-        const raw = (config.get<string>('javapath', '') || '').trim();
-        const javacmd = raw === '' ? 'java' : raw;
+        let javacmd : string;
+        let args : string[];
+        if(exe === '') {
+            args = ['-jar', serverJar, ...sharedArgs];
+            const raw = (config.get<string>('javaPath', '') || '').trim();
+            javacmd = raw === '' ? 'java' : raw;
+        } else {
+            // TODO space in javacmd will not be handled!
+            const parts = exe.split(/\s+/);
+            javacmd = parts[0];
+            args = [...parts.slice(1), ...sharedArgs];
+        }
         vscode.window.showInformationMessage(`Running: ${javacmd} ${args.join(' ')}`);
         serverOptions = {
             run: { command: javacmd, args },

@@ -52,10 +52,15 @@
 		"configuration": {
 			"title": "WML Extension Settings",
 			"properties": {
-				"wml.javapath": {
+				"wml.javaPath": {
 					"type": "string",
 					"default": "",
-					"description": "Path to Java command"
+					"description": "Path to Java command. **Must not** contain spaces."
+				},
+				"wml.exePath": {
+					"type": "string",
+					"default": "",
+					"description": "Custom WML LSP launch command. Parts **must not** contain spaces. For example: `my/custom/javapath/java -jar my/custom/wml.jar` or `my/custom/executable.exe`."
 				},
 				"wml.dataDir": {
 					"type": "string",
