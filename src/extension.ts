@@ -111,6 +111,7 @@ async function ensureStandaloneServerBinary(serverDir: string): Promise<string |
 /**
 * Ensures a string setting is set. If empty/undefined, asks the user for input.
 * Optionally saves the user’s input back into settings.
+* These are **Global**.
 */
 export async function requireSetting(
     section: string,              // e.g. "myExtension"
@@ -131,7 +132,7 @@ export async function requireSetting(
 
         if (input && input.trim().length > 0) {
             value = input.trim();
-            await config.update(key, value, vscode.ConfigurationTarget.Workspace);
+            await config.update(key, value, vscode.ConfigurationTarget.Global);
         } else {
             vscode.window.showErrorMessage(`Required setting "${section}.${key}" is missing.`);
             return undefined;
@@ -144,8 +145,7 @@ export async function requireSetting(
 /**
 * Optional setting. If empty/undefined, asks the user for input.
 * Optionally saves the user’s input back into settings.
-* FIXME: this will keep prompting the user if not set on every launch.
-* but this is optional setting so should be shown once maybe?
+* These are **Workspace** scope.
 */
 export async function optionalSetting(
     section: string,              // e.g. "myExtension"
