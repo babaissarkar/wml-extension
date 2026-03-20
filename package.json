@@ -81,22 +81,24 @@
 		}
 	},
 	"dependencies": {
-		"adm-zip": "^0.5.x",
+		"adm-zip": "^0.5.0",
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
 		"@types/adm-zip": "^0.5.8",
 		"@types/vscode": "^1.75.0",
-		"adm-zip": "^0.5.x",
+		"@vscode/vsce": "^3.0.0",
+		"esbuild": "^0.25.0",
 		"ts-loader": "^9.5.1",
-		"typescript": "^5.9.2",
-		"vsce": "^2.15.0"
+		"typescript": "^5.9.2"
 	},
 	"repository": {
 		"url": "https://github.com/babaissarkar/wml-extension.git"
 	},
 	"scripts": {
-		"compile": "tsc -p ./"
+		"compile": "tsc -p ./",
+		"bundle": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:vscode-languageclient --platform=node --format=cjs",
+		"package": "npm run bundle && vsce package"
 	},
 	"__metadata": {
 		"id": "f8439943-aded-4410-8396-4cfad3df4991",
