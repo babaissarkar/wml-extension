@@ -10,27 +10,37 @@ import * as path from 'path';
 import { pipeline } from 'stream/promises';
 import { promisify } from 'util';
 import { execFile } from 'child_process';
+import AdmZip from 'adm-zip';
 import { CloseAction, ErrorAction, LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 const execFileAsync = promisify(execFile);
 
-const STANDALONE_LSP_URLS: Record<string, string> = {
-    win32: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML.exe',
-    linux: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML.AppImage'
+// ZIP must contain: jre/bin/java (linux) or jre/bin/java.exe (win32), plus wml.jar at root
+const BUNDLED_JRE_URLS: Record<string, string> = {
+    win32: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML-win.zip',
+    linux: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML-linux.zip'
 };
 
-async function hasJavaRuntime(): Promise<boolean> {
+// ----------------------------------------------------------------------------
+// Java detection
+// ----------------------------------------------------------------------------
+
+async function findSystemJava(): Promise<string | undefined> {
+    const config = vscode.workspace.getConfiguration('wml');
+    const configured = (config.get<string>('javaPath', '') || '').trim();
+    const candidate = configured !== '' ? configured : 'java';
     try {
-        const config = vscode.workspace.getConfiguration('wml');
-        let path: string = config.get<string>('javaPath', '');
-        await execFileAsync(path == '' ? 'java' : path, ['-version']);
-        return true;
+        await execFileAsync(candidate, ['-version']);
+        return candidate;
     } catch {
-        vscode.window.showErrorMessage(`Invalid Java path: ${path}`);
-        return false;
+        return undefined;
     }
 }
+
+// ----------------------------------------------------------------------------
+// Download helpers
+// ----------------------------------------------------------------------------
 
 function downloadFile(url: string, destination: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -49,7 +59,7 @@ function downloadFile(url: string, destination: string): Promise<void> {
 
             if (response.statusCode !== 200) {
                 response.resume();
-                reject(new Error(`Failed to download LSP binary. HTTP ${response.statusCode}`));
+                reject(new Error(`Failed to download. HTTP ${response.statusCode}`));
                 return;
             }
 
@@ -61,12 +71,9 @@ function downloadFile(url: string, destination: string): Promise<void> {
     });
 }
 
-
 async function downloadFileAtomic(url: string, destination: string): Promise<void> {
     const tempPath = `${destination}.tmp`;
-
     await fsp.rm(tempPath, { force: true });
-
     try {
         await downloadFile(url, tempPath);
         await fsp.rename(tempPath, destination);
@@ -76,50 +83,81 @@ async function downloadFileAtomic(url: string, destination: string): Promise<voi
     }
 }
 
-async function ensureStandaloneServerBinary(serverDir: string): Promise<string | undefined> {
-    const downloadUrl = STANDALONE_LSP_URLS[process.platform];
+// ----------------------------------------------------------------------------
+// Bundled JRE: download ZIP, extract with adm-zip, return java path
+// ----------------------------------------------------------------------------
+
+async function ensureBundledJre(serverDir: string): Promise<string | undefined> {
+    const downloadUrl = BUNDLED_JRE_URLS[process.platform];
     if (!downloadUrl) {
+        vscode.window.showErrorMessage(
+            `No bundled JRE available for platform: ${os.platform()}`
+        );
         return undefined;
     }
 
-    const outputName = process.platform === 'win32' ? 'WML.exe' : 'WML.AppImage';
-    const outputPath = path.join(serverDir, outputName);
+    const extractDir = path.join(serverDir, 'wml-bundled');
+    const javaExe = process.platform === 'win32'
+        ? path.join(extractDir, 'jre', 'bin', 'java.exe')
+        : path.join(extractDir, 'jre', 'bin', 'java');
 
+    // Already extracted — skip download
+    if (fs.existsSync(javaExe)) {
+        return javaExe;
+    }
+
+    const zipPath = path.join(serverDir, 'wml-bundled.zip');
     await fsp.mkdir(serverDir, { recursive: true });
 
-    if (!fs.existsSync(outputPath)) {
-        await vscode.window.withProgress(
-            {
-                location: vscode.ProgressLocation.Notification,
-                cancellable: false,
-                title: 'WML: Downloading language server binary'
-            },
-            async (progress) => {
-                progress.report({ message: `Fetching ${outputName}...` });
-                await downloadFileAtomic(downloadUrl, outputPath);
-            }
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            cancellable: false,
+            title: 'WML: Downloading bundled Java runtime'
+        },
+        async (progress) => {
+            progress.report({ message: 'Downloading ZIP...' });
+            await downloadFileAtomic(downloadUrl, zipPath);
+
+            progress.report({ message: 'Extracting...' });
+            await fsp.rm(extractDir, { recursive: true, force: true });
+            await fsp.mkdir(extractDir, { recursive: true });
+
+            const zip = new AdmZip(zipPath);
+            zip.extractAllTo(extractDir, /* overwrite */ true);
+
+            await fsp.rm(zipPath, { force: true });
+        }
+    );
+
+    if (!fs.existsSync(javaExe)) {
+        vscode.window.showErrorMessage(
+            'WML: Bundled JRE extraction failed — java binary not found at expected path.'
         );
+        return undefined;
     }
 
     if (process.platform !== 'win32') {
-        await fsp.chmod(outputPath, 0o755);
+        await fsp.chmod(javaExe, 0o755);
     }
 
-    return outputPath;
+    return javaExe;
 }
 
-/**
-* Ensures a string setting is set. If empty/undefined, asks the user for input.
-* Optionally saves the user’s input back into settings.
-* These are **Global**.
-*/
-export async function requireSetting(
-    section: string,              // e.g. "myExtension"
-    key: string,                  // e.g. "coreIncludeDir"
-    prompt: string,               // input box prompt
-    placeHolder?: string,         // optional placeholder
-): Promise<string | undefined> {
+// ----------------------------------------------------------------------------
+// Settings helpers
+// ----------------------------------------------------------------------------
 
+/**
+ * Ensures a string setting is set. If empty/undefined, asks the user for input.
+ * Saves to **Global** scope.
+ */
+export async function requireSetting(
+    section: string,
+    key: string,
+    prompt: string,
+    placeHolder?: string,
+): Promise<string | undefined> {
     const config = vscode.workspace.getConfiguration(section);
     let value: string = config.get<string>(key, '');
 
@@ -143,17 +181,15 @@ export async function requireSetting(
 }
 
 /**
-* Optional setting. If empty/undefined, asks the user for input.
-* Optionally saves the user’s input back into settings.
-* These are **Workspace** scope.
-*/
+ * Optional setting. If empty/undefined, asks the user for input once.
+ * Saves to **Workspace** scope.
+ */
 export async function optionalSetting(
-    section: string,              // e.g. "myExtension"
-    key: string,                  // e.g. "coreIncludeDir"
-    prompt: string,               // input box prompt
-    placeHolder?: string,         // optional placeholder
+    section: string,
+    key: string,
+    prompt: string,
+    placeHolder?: string,
 ): Promise<string | undefined> {
-
     const config = vscode.workspace.getConfiguration(section);
     let value: string = config.get<string>(key, '');
 
@@ -167,140 +203,158 @@ export async function optionalSetting(
         if (input && input.trim().length > 0) {
             value = input.trim();
             await config.update(key, value, vscode.ConfigurationTarget.Workspace);
+            return value;
         }
     }
 
-    return undefined;
+    return value || undefined;
 }
 
+// ----------------------------------------------------------------------------
+// activate
+// ----------------------------------------------------------------------------
+
 export async function activate(context: vscode.ExtensionContext) {
-    // Start LSP client
     const serverDir = context.asAbsolutePath('server');
+    // The .jar bundled with the extension (always present in the packaged vsix)
     const serverJar = path.join(serverDir, 'wml.jar');
 
-    // Ensure workspace root exists
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
         vscode.window.showErrorMessage(
-            "No workspace folder open. Please open a folder before starting the WML language server."
+            'No workspace folder open. Please open a folder before starting the WML language server.'
         );
-        throw new Error("Workspace root not found");
+        throw new Error('Workspace root not found');
     }
 
     const config = vscode.workspace.getConfiguration('wml');
-    const exe = (config.get<string>('exePath', '') || '').trim();
+    const exeOverride = (config.get<string>('exePath', '') || '').trim();
 
-    let javaInstalled;
-    if(exe === '') {
-        javaInstalled = await hasJavaRuntime();
-        if(!javaInstalled) {
-            await requireSetting(
-                'wml',
-                'javaPath',
-                'Please enter Java Runtime path. (Could be set later via Settings)'
-            );
-        }
+    // ------------------------------------------------------------------
+    // Resolve java command + jar to run
+    // ------------------------------------------------------------------
+    let javacmd: string;
+    let jarPath: string = serverJar; // always use the extension-bundled jar
+
+    if (exeOverride !== '') {
+        // User specified a custom command (could be `java -Xmx512m` etc.)
+        // Split on whitespace; first token is the executable, rest prepended to args.
+        // NOTE: paths with spaces in exeOverride are not supported.
+        const parts = exeOverride.split(/\s+/);
+        javacmd = parts[0];
+        // parts.slice(1) will be prepended to args below
     } else {
-        javaInstalled = true; // bypass if exePath exists. TODO exePath should be checked.
+        // Try system java first
+        const systemJava = await findSystemJava();
+
+        if (systemJava) {
+            javacmd = systemJava;
+        } else {
+            // No system java — try bundled JRE (downloads if needed)
+            vscode.window.showInformationMessage(
+                'WML: Java not found on PATH. Attempting to download a bundled JRE...'
+            );
+
+            const bundledJava = await ensureBundledJre(serverDir);
+            if (!bundledJava) {
+                vscode.window.showErrorMessage(
+                    'WML: Could not find or download a Java runtime. ' +
+                    'Please install Java or set wml.javaPath in settings.'
+                );
+                return;
+            }
+
+            javacmd = bundledJava;
+        }
     }
+
+    // ------------------------------------------------------------------
+    // Required settings
+    // ------------------------------------------------------------------
 
     const dataDir = await requireSetting(
         'wml',
         'dataDir',
-        'Please enter the Wesnoth gamedata directory. (Could be set later via Settings)'
+        'Please enter the Wesnoth gamedata directory. (Can be changed later in Settings)'
     );
 
     const userDataDir = await requireSetting(
         'wml',
         'userDataDir',
-        'Please enter the Wesnoth userdata directory. (Could be set later via Settings)'
+        'Please enter the Wesnoth userdata directory. (Can be changed later in Settings)'
     );
 
-    let shown_once = context.workspaceState.get<boolean>('wml.define_prompt_shown_once', false);
-    let defines : string | undefined = undefined;
-    if(!shown_once) {
+    if (!dataDir || !userDataDir) {
+        return; // user cancelled
+    }
+
+    // ------------------------------------------------------------------
+    // Optional defines (shown only once per workspace)
+    // ------------------------------------------------------------------
+
+    let defines: string | undefined;
+    const shownOnce = context.workspaceState.get<boolean>('wml.define_prompt_shown_once', false);
+
+    if (!shownOnce) {
         defines = await optionalSetting(
             'wml',
             'defines',
-            'Any additional defines, like CAMPAIGN_MY_CAMPAIGN or EDITOR. (This prompt will be shown once, but Defines could be set later via Settings)'
+            'Any additional defines, e.g. CAMPAIGN_MY_CAMPAIGN or EDITOR. ' +
+            '(This prompt shows once; change via Settings later)'
         );
         await context.workspaceState.update('wml.define_prompt_shown_once', true);
     } else {
-        defines = config.get<string>('defines', '');
-        if(defines == '') {
-            defines = undefined;
-        }
+        const raw = config.get<string>('defines', '').trim();
+        defines = raw !== '' ? raw : undefined;
     }
 
-    if (!dataDir || !userDataDir) {
-        return; // bail out if user canceled
-    }
+    // ------------------------------------------------------------------
+    // Build argument list
+    // ------------------------------------------------------------------
 
-    const coreIncludeDir: string = path.join(dataDir, 'core', 'macros');
-    const coreUnitsDir: string = path.join(dataDir, 'core', 'units.cfg');
-    const macroArgs = defines
+    const coreIncludeDir = path.join(dataDir, 'core', 'macros');
+    const coreUnitsDir   = path.join(dataDir, 'core', 'units.cfg');
+
+    const macroArgs: string[] = defines
         ? defines
-            .split(",")
-            .map(pair => pair.split("="))
-            .filter(([key, value]) => key && value) // ignore malformed ones
-            .flatMap(([key, value]) => ["-d", key.trim(), value.trim()])
+            .split(',')
+            .map(pair => pair.split('='))
+            .filter(([key, value]) => key && value)
+            .flatMap(([key, value]) => ['-d', key.trim(), value.trim()])
         : [];
 
     const sharedArgs: string[] = [
         '-s',
-        '-datadir', dataDir,
+        '-datadir',     dataDir,
         '-userdatadir', userDataDir,
-        '-include', coreIncludeDir,
-        '-include', coreUnitsDir,
+        '-include',     coreIncludeDir,
+        '-include',     coreUnitsDir,
         ...macroArgs
     ];
 
-    // javaInstalled = await hasJavaRuntime();
-    let serverOptions: ServerOptions;
+    let args: string[];
+    if (exeOverride !== '') {
+        const parts = exeOverride.split(/\s+/);
+        args = [...parts.slice(1), ...sharedArgs];
+    } else {
+        args = ['-jar', jarPath, ...sharedArgs];
+    }
 
-    // if(javaInstalled) {
-        let javacmd : string;
-        let args : string[];
-        if(exe === '') {
-            args = ['-jar', serverJar, ...sharedArgs];
-            const raw = (config.get<string>('javaPath', '') || '').trim();
-            javacmd = raw === '' ? 'java' : raw;
-        } else {
-            // TODO space in javacmd will not be handled!
-            const parts = exe.split(/\s+/);
-            javacmd = parts[0];
-            args = [...parts.slice(1), ...sharedArgs];
-        }
-        vscode.window.showInformationMessage(`Running: ${javacmd} ${args.join(' ')}`);
-        serverOptions = {
-            run: { command: javacmd, args },
-            debug: { command: javacmd, args }
-        };
-    // } else {
-    //     const standaloneBinary = await ensureStandaloneServerBinary(serverDir);
+    vscode.window.showInformationMessage(`WML: Running: ${javacmd} ${args.join(' ')}`);
 
-    //     if (!standaloneBinary) {
-    //         vscode.window.showErrorMessage(
-    //             `Java is not installed and no standalone WML language server is available for ${os.platform()}.`
-    //         );
-    //         return;
-    //     }
+    // ------------------------------------------------------------------
+    // Start LSP client
+    // ------------------------------------------------------------------
 
-    //     vscode.window.showInformationMessage(`Running: ${standaloneBinary} ${sharedArgs.join(' ')}`);
-    //     serverOptions = {
-    //         run: { command: standaloneBinary, args: sharedArgs },
-    //         debug: { command: standaloneBinary, args: sharedArgs }
-    //     };
-    // }
+    const serverOptions: ServerOptions = {
+        run:   { command: javacmd, args },
+        debug: { command: javacmd, args }
+    };
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'wml' }],
         errorHandler: {
-            error: () => {
-                return { action: ErrorAction.Shutdown };
-            },
-            closed: () => {
-                return { action: CloseAction.DoNotRestart };
-            }
+            error: () => ({ action: ErrorAction.Shutdown }),
+            closed: () => ({ action: CloseAction.DoNotRestart })
         }
     };
 
