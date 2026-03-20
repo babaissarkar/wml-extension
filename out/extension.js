@@ -221,7 +221,7 @@ function activate(context) {
             else {
                 // No system java — try bundled JRE (downloads if needed)
                 vscode.window.showInformationMessage('WML: Java not found on PATH. Attempting to download a bundled JRE...');
-                const bundledJava = yield ensureBundledJre(serverDir);
+                const bundledJava = yield ensureBundledJre(context.globalStorageUri.fsPath);
                 if (!bundledJava) {
                     vscode.window.showErrorMessage('WML: Could not find or download a Java runtime. ' +
                         'Please install Java or set wml.javaPath in settings.');

@@ -254,7 +254,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 'WML: Java not found on PATH. Attempting to download a bundled JRE...'
             );
 
-            const bundledJava = await ensureBundledJre(serverDir);
+            const bundledJava = await ensureBundledJre(context.globalStorageUri.fsPath);
             if (!bundledJava) {
                 vscode.window.showErrorMessage(
                     'WML: Could not find or download a Java runtime. ' +
