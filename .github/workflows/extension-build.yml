@@ -36,3 +36,11 @@ jobs:
         with:
           name: wml-lsp.vsix
           path: wml-lsp.vsix
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master'
+        with:
+          tag_name: latest
+          name: Latest Build
+          files: ./wml-lsp.vsix
