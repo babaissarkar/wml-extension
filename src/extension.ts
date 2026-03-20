@@ -10,7 +10,7 @@ import * as path from 'path';
 import { pipeline } from 'stream/promises';
 import { promisify } from 'util';
 import { execFile } from 'child_process';
-import AdmZip from 'adm-zip';
+import AdmZip = require('adm-zip');
 import { CloseAction, ErrorAction, LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
