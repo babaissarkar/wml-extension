@@ -15,6 +15,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Fetch latest server JAR
+        run: |
+          mkdir -p server
+          curl -L https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/wml.jar \
+            -o server/wml.jar
+
       - name: Bundle with esbuild
         run: |
           npx esbuild ./src/extension.ts \
