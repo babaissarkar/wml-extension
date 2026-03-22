@@ -7,11 +7,13 @@ import * as fsp from 'fs/promises';
 import * as https from 'https';
 import * as os from 'os';
 import * as path from 'path';
+import * as net from 'net';
+import * as child_process from 'child_process';
 import { pipeline } from 'stream/promises';
 import { promisify } from 'util';
 import { execFile } from 'child_process';
 import AdmZip = require('adm-zip');
-import { CloseAction, ErrorAction, LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node';
+import { CloseAction, ErrorAction, LanguageClient, LanguageClientOptions, ServerOptions, StreamInfo } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 const execFileAsync = promisify(execFile);
@@ -210,6 +212,23 @@ export async function optionalSetting(
     return value || undefined;
 }
 
+function connectWithRetry(port: number, retries = 10, delay = 500): Promise<net.Socket> {
+    return new Promise((resolve, reject) => {
+        const attempt = (n: number) => {
+            const socket = new net.Socket();
+            socket.connect(port, '127.0.0.1', () => {
+                resolve(socket)
+            });
+            socket.on('error', () => {
+                socket.destroy();
+                if (n <= 0) return reject(new Error('LSP server did not start in time'));
+                setTimeout(() => attempt(n - 1), delay);
+            });
+        };
+        attempt(retries);
+    });
+}
+
 // ----------------------------------------------------------------------------
 // activate
 // ----------------------------------------------------------------------------
@@ -339,16 +358,25 @@ export async function activate(context: vscode.ExtensionContext) {
         args = ['-jar', jarPath, ...sharedArgs];
     }
 
-    vscode.window.showInformationMessage(`WML: Running: ${javacmd} ${args.join(' ')}`);
-
     // ------------------------------------------------------------------
-    // Start LSP client
+    // Start LSP
     // ------------------------------------------------------------------
 
-    const serverOptions: ServerOptions = {
-        run:   { command: javacmd, args },
-        debug: { command: javacmd, args }
-    };
+    const serverOptions = () => new Promise<StreamInfo>((resolve, reject) => {
+        const socket = new net.Socket();
+        const port = 9007;
+
+        socket.connect(port, '127.0.0.1', () => {
+            vscode.window.showInformationMessage(`WML-LSP: Running: ${javacmd} ${args.join(' ')} on Port 9007`);
+            resolve({ reader: socket, writer: socket });
+        });
+
+        socket.on('error', () => {
+            socket.destroy();
+            child_process.spawn(javacmd, args, { stdio: 'ignore' });
+            connectWithRetry(port).then(s => resolve({ reader: s, writer: s })).catch(reject);
+        });
+    });
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'wml' }],
