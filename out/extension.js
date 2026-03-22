@@ -20,8 +20,6 @@ const fsp = require("fs/promises");
 const https = require("https");
 const os = require("os");
 const path = require("path");
-const net = require("net");
-const child_process = require("child_process");
 const promises_1 = require("stream/promises");
 const util_1 = require("util");
 const child_process_1 = require("child_process");
@@ -187,23 +185,6 @@ function optionalSetting(section, key, prompt, placeHolder) {
         return value || undefined;
     });
 }
-function connectWithRetry(port, retries = 10, delay = 500) {
-    return new Promise((resolve, reject) => {
-        const attempt = (n) => {
-            const socket = new net.Socket();
-            socket.connect(port, '127.0.0.1', () => {
-                resolve(socket);
-            });
-            socket.on('error', () => {
-                socket.destroy();
-                if (n <= 0)
-                    return reject(new Error('LSP server did not start in time'));
-                setTimeout(() => attempt(n - 1), delay);
-            });
-        };
-        attempt(retries);
-    });
-}
 // ----------------------------------------------------------------------------
 // activate
 // ----------------------------------------------------------------------------
@@ -299,22 +280,14 @@ function activate(context) {
         else {
             args = ['-jar', jarPath, ...sharedArgs];
         }
+        vscode.window.showInformationMessage(`WML: Running: ${javacmd} ${args.join(' ')}`);
         // ------------------------------------------------------------------
-        // Start LSP
+        // Start LSP client
         // ------------------------------------------------------------------
-        const serverOptions = () => new Promise((resolve, reject) => {
-            const socket = new net.Socket();
-            const port = 9007;
-            socket.connect(port, '127.0.0.1', () => {
-                vscode.window.showInformationMessage(`WML-LSP: Running: ${javacmd} ${args.join(' ')} on Port 9007`);
-                resolve({ reader: socket, writer: socket });
-            });
-            socket.on('error', () => {
-                socket.destroy();
-                child_process.spawn(javacmd, args, { stdio: 'ignore' });
-                connectWithRetry(port).then(s => resolve({ reader: s, writer: s })).catch(reject);
-            });
-        });
+        const serverOptions = {
+            run: { command: javacmd, args },
+            debug: { command: javacmd, args }
+        };
         const clientOptions = {
             documentSelector: [{ scheme: 'file', language: 'wml' }],
             errorHandler: {
