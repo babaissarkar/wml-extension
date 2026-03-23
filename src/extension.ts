@@ -362,20 +362,26 @@ export async function activate(context: vscode.ExtensionContext) {
     // Start LSP
     // ------------------------------------------------------------------
 
-    const serverOptions = () => new Promise<StreamInfo>((resolve, reject) => {
-        const socket = new net.Socket();
+    const serverOptions = () => new Promise<StreamInfo>(async (resolve, reject) => {
         const port = 9007;
 
-        socket.connect(port, '127.0.0.1', () => {
-            vscode.window.showInformationMessage(`WML-LSP: Running: ${javacmd} ${args.join(' ')} on Port 9007`);
-            resolve({ reader: socket, writer: socket });
-        });
-
-        socket.on('error', () => {
-            socket.destroy();
+        try {
+            // 1. Try connecting to existing server
+            const socket = await connectWithRetry(port, 1, 200);
+            return resolve({ reader: socket, writer: socket });
+        } catch {
+            // 2. Not running → start server
+            vscode.window.showInformationMessage(`WML LSP: Starting server...`);
             child_process.spawn(javacmd, args, { stdio: 'ignore' });
-            connectWithRetry(port).then(s => resolve({ reader: s, writer: s })).catch(reject);
-        });
+
+            try {
+                // 3. Now retry properly
+                const socket = await connectWithRetry(port, 10, 500);
+                resolve({ reader: socket, writer: socket });
+            } catch (err) {
+                reject(err);
+            }
+        }
     });
 
     const clientOptions: LanguageClientOptions = {
