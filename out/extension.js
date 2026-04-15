@@ -302,27 +302,19 @@ function activate(context) {
         // ------------------------------------------------------------------
         // Start LSP
         // ------------------------------------------------------------------
-        const serverOptions = () => new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+        const serverOptions = () => new Promise((resolve, reject) => {
+            const socket = new net.Socket();
             const port = 9007;
-            try {
-                // 1. Try connecting to existing server
-                const socket = yield connectWithRetry(port, 1, 200);
-                return resolve({ reader: socket, writer: socket });
-            }
-            catch (_a) {
-                // 2. Not running → start server
-                vscode.window.showInformationMessage(`WML LSP: Starting server...`);
+            socket.connect(port, '127.0.0.1', () => {
+                vscode.window.showInformationMessage(`WML-LSP: Running: ${javacmd} ${args.join(' ')} on Port 9007`);
+                resolve({ reader: socket, writer: socket });
+            });
+            socket.on('error', () => {
+                socket.destroy();
                 child_process.spawn(javacmd, args, { stdio: 'ignore' });
-                try {
-                    // 3. Now retry properly
-                    const socket = yield connectWithRetry(port, 10, 500);
-                    resolve({ reader: socket, writer: socket });
-                }
-                catch (err) {
-                    reject(err);
-                }
-            }
-        }));
+                connectWithRetry(port).then(s => resolve({ reader: s, writer: s })).catch(reject);
+            });
+        });
         const clientOptions = {
             documentSelector: [{ scheme: 'file', language: 'wml' }],
             errorHandler: {
