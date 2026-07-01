@@ -76,6 +76,12 @@ Pass preprocessor defines to simulate specific build conditions, such as being i
 
 ## Release Notes
 
+### Version 3.0.0
++ Rewritten LSP support in conjunction with [my LSP4j based LSP server here](https://github.com/babaissarkar/wml-multitool).
++ Hover/Go To Definition support for Unit Types. Completion improved.
++ References support for Macros
++ Userdata (if inside add-ons directory) and Defines autodetection. (MULTIPLAYER, difficulty macros, Campaign defines)
+
 ### Version 2.0.0
 LSP support in conjunction with [my LSP4j based LSP server here](https://github.com/babaissarkar/wml-parser-lsp).
 

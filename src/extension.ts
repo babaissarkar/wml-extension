@@ -18,8 +18,8 @@ const execFileAsync = promisify(execFile);
 
 // ZIP must contain: jre/bin/java (linux) or jre/bin/java.exe (win32), plus wml.jar at root
 const BUNDLED_JRE_URLS: Record<string, string> = {
-    win32: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML-win.zip',
-    linux: 'https://github.com/babaissarkar/wml-parser-lsp/releases/download/latest/WML-linux.zip'
+    win32: 'https://github.com/babaissarkar/wml-multitool/releases/download/latest/WML-win.zip',
+    linux: 'https://github.com/babaissarkar/wml-multitool/releases/download/latest/WML-linux.zip'
 };
 
 // ----------------------------------------------------------------------------
@@ -268,53 +268,32 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // ------------------------------------------------------------------
-    // Required settings
+    // Required setting: gamedata directory from wesnoth
     // ------------------------------------------------------------------
 
     const dataDir = await requireSetting(
         'wml',
         'dataDir',
-        'Please enter the Wesnoth gamedata directory. (Can be changed later in Settings)'
+        'Please enter the Wesnoth gamedata directory. Must be the part before "data", like "/home/myuser/wesnoth". (Can be entered later in Settings if prompt skipped.)'
     );
 
-    const userDataDir = await requireSetting(
-        'wml',
-        'userDataDir',
-        'Please enter the Wesnoth userdata directory. (Can be changed later in Settings)'
-    );
-
-    if (!dataDir || !userDataDir) {
+    if (!dataDir) {
         return; // user cancelled
     }
 
-    // ------------------------------------------------------------------
-    // Optional defines (shown only once per workspace)
-    // ------------------------------------------------------------------
+    const userDataDir = config.get<string>('userDataDir', '');
+
+    const coreIncludeDir = path.join(dataDir, 'data', 'core');
 
     let defines: string | undefined;
-    const shownOnce = context.workspaceState.get<boolean>('wml.define_prompt_shown_once', false);
-
-    if (!shownOnce) {
-        defines = await optionalSetting(
-            'wml',
-            'defines',
-            'Any additional defines, e.g. CAMPAIGN_MY_CAMPAIGN or EDITOR. ' +
-            '(This prompt shows once; change via Settings later)'
-        );
-        await context.workspaceState.update('wml.define_prompt_shown_once', true);
-    } else {
-        const raw = config.get<string>('defines', '').trim();
-        defines = raw !== '' ? raw : undefined;
-    }
+    const raw = config.get<string>('defines', '').trim();
+    defines = raw !== '' ? raw : undefined;
 
     // ------------------------------------------------------------------
-    // Build argument list
+    // Build LSP argument list
     // ------------------------------------------------------------------
 
-    const coreIncludeDir = path.join(dataDir, 'core', 'macros');
-    const coreUnitsDir   = path.join(dataDir, 'core', 'units.cfg');
-
-    const macroArgs: string[] = defines
+    const defs: string[] = defines
         ? defines
             .split(',')
             .map(pair => pair.split('='))
@@ -322,21 +301,26 @@ export async function activate(context: vscode.ExtensionContext) {
             .flatMap(([key, value]) => ['-d', key.trim(), value.trim()])
         : [];
 
-    const sharedArgs: string[] = [
-        '-s',
-        '-datadir',     dataDir,
-        '-userdatadir', userDataDir,
-        '-include',     coreIncludeDir,
-        '-include',     coreUnitsDir,
-        ...macroArgs
-    ];
-
     let args: string[];
+
     if (exeOverride !== '') {
         const parts = exeOverride.split(/\s+/);
-        args = [...parts.slice(1), ...sharedArgs];
+        args = [...parts.slice(1)];
     } else {
-        args = ['-jar', jarPath, ...sharedArgs];
+        args = ['-jar', jarPath];
+    }
+
+    args = [
+        ...args,
+        '-s',
+        '-datadir',     dataDir,
+        '-include',     coreIncludeDir,
+        ...defs
+    ];
+
+    if (userDataDir) {
+        args.push('-userdatadir');
+        args.push(userDataDir);
     }
 
     vscode.window.showInformationMessage(`WML: Running: ${javacmd} ${args.join(' ')}`);
