@@ -233,11 +233,19 @@ function activate(context) {
         // ------------------------------------------------------------------
         // Required setting: gamedata directory from wesnoth
         // ------------------------------------------------------------------
-        const dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory. Must be the part before "data", like "/home/myuser/wesnoth". (Can be entered later in Settings if prompt skipped.)');
+        let dataDir = yield requireSetting('wml', 'dataDir', 'Please enter the Wesnoth gamedata directory. Must be the part before "data", like "/home/myuser/wesnoth". (Can be entered later in Settings if prompt skipped.)');
         if (!dataDir) {
             return; // user cancelled
         }
-        const userDataDir = config.get('userDataDir', '');
+        else if (path.basename(dataDir) === "data") {
+            // drop "data" folder if user included it
+            dataDir = path.dirname(dataDir);
+        }
+        let userDataDir = config.get('userDataDir', '');
+        if (path.basename(userDataDir) === "data") {
+            // drop "data" folder if user included it
+            userDataDir = path.dirname(userDataDir);
+        }
         const coreIncludeDir = path.join(dataDir, 'data', 'core');
         let defines;
         const raw = config.get('defines', '').trim();

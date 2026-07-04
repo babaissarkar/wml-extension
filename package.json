@@ -3,7 +3,7 @@
 	"displayName": "WML v2 with LSP",
 	"description": "Wesnoth Markup Language LSP and Syntax Highlighting",
 	"publisher": "Bitron",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"bugs": {
 		"url": "https://github.com/babaissarkar/wml-extension/issues"
 	},
@@ -65,12 +65,12 @@
 				"wml.dataDir": {
 					"type": "string",
 					"default": "",
-					"description": "Path to Wesnoth gamedata directory. Must be the same as 'wesnoth --data-path', like '/home/myuser/wesnoth'."
+					"description": "Path to Wesnoth gamedata directory. Must be the same as 'wesnoth --data-path', like '/home/myuser/wesnoth'. Trailing 'data' directory will be dropped."
 				},
 				"wml.userDataDir": {
 					"type": "string",
 					"default": "",
-					"description": "Path to Wesnoth userdata directory. Must be the same as 'wesnoth --userdata-path', like '/home/myuser/.local/share/wesnoth/1.19'."
+					"description": "Path to Wesnoth userdata directory. Must be the same as 'wesnoth --userdata-path', like '/home/myuser/.local/share/wesnoth/1.19'. Trailing 'data' directory will be dropped."
 				},
 				"wml.defines": {
 					"type": "string",

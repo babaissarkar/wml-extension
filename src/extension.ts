@@ -271,7 +271,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Required setting: gamedata directory from wesnoth
     // ------------------------------------------------------------------
 
-    const dataDir = await requireSetting(
+    let dataDir = await requireSetting(
         'wml',
         'dataDir',
         'Please enter the Wesnoth gamedata directory. Must be the part before "data", like "/home/myuser/wesnoth". (Can be entered later in Settings if prompt skipped.)'
@@ -279,9 +279,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
     if (!dataDir) {
         return; // user cancelled
+    } else if (path.basename(dataDir) === "data") {
+        // drop "data" folder if user included it
+        dataDir = path.dirname(dataDir);
     }
 
-    const userDataDir = config.get<string>('userDataDir', '');
+    let userDataDir = config.get<string>('userDataDir', '');
+    if (path.basename(userDataDir) === "data") {
+        // drop "data" folder if user included it
+        userDataDir = path.dirname(userDataDir);
+    }
 
     const coreIncludeDir = path.join(dataDir, 'data', 'core');
 
