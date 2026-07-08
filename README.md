@@ -9,10 +9,10 @@ is an [open source](https://opensource.org/faq#osd), turn-based strategy game wi
 
 ([Wesnoth Homepage](https://www.wesnoth.org/))
 
-### How to Use/Install the version 2.0.0 with LSP support
+### How to Use/Install thid version with LSP support
 1. Uninstall previous version and install the latest VSIX extension from this repo (available from latest CI runs, check Actions tab above).
-2. Open an Addon folder with a valid `_main.cfg` via the Open Folder VSCode option. Enter Wesnoth gamedata path and userdata path in the prompt after you install it.
-3. Enter the Wesnoth data/userdata path and any custom defines in the prompt. (Can be added later via setting, but datapath/userdatapath is required for the LSP to work.)
+2. Open an Addon folder with a valid `_main.cfg` under usual wesnoth addons path via the *Open Folder* VSCode option. Enter Wesnoth gamedata path and userdata path in the prompt after you install it.
+3. Enter the Wesnoth data path in the prompt. (Can be added later via setting, but datapath is required for the LSP to work.)
 4. That's it. You will get success indication like this:
 
 <img width="588" height="173" alt="Screenshot from 2025-10-04 16-28-22" src="https://github.com/user-attachments/assets/7a10375b-0471-46e2-bab5-3810327d75ef" />
@@ -85,7 +85,7 @@ LSP support in conjunction with [my LSP4j based LSP server here](https://github.
 ### Version 1.0.6
 
 + fixed typo in name :blushing:
-+ added \\# po:
++ added \#po
 
 ### Version 1.0.5
 
@@ -111,9 +111,9 @@ LSP support in conjunction with [my LSP4j based LSP server here](https://github.
 + added \#ifnver
 + added \#warning
 + added \#error
-+ added \# wmllint:
-+ added \# wmlindent:
-+ added \# wmlscope:
++ added \#wmllint:
++ added \#wmlindent:
++ added \#wmlscope:
 + numerics and booleans are bold
 
 ### Version 1.0.0
